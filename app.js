@@ -80,12 +80,12 @@ const generateTimeTableClassWise = (className, sortSubject, isProxyOptionAvailab
     for (let data of DAY_MAP) {
         classObject[data] = {};
         for (let foo of TIME_TABLE_MAP) {
-            classObject[data][foo] = {};
+            classObject[data][foo] = '';
             for (let key of SUBJECTS_LIST) {
                 if (sortSubject[key][foo][data] && sortSubject[key][foo][data] == className) {
                     classObject[data][foo] = key;
                 }
-                if (Object.entries(classObject[data][foo]).length === 0 && classObject[data][foo].constructor === Object){
+                if (classObject[data][foo] === ''){
                     if (isProxyOptionAvailable) {
                         var freeListArray = PROXY_TEACHER_AVAILABLE[data][foo];
                         freeListArray && freeListArray[0] && (classObject[data][foo] = freeListArray[0]);
@@ -121,5 +121,5 @@ const findFreeTeacherByDayAndTime = () => {
     }
     PROXY_TEACHER_AVAILABLE = proxyDataDataAndTime;
 };
-generateTimeTable(false); // No proxy assigned for empty classes.
-// generateTimeTable(true); // Assign teachers which are free.
+// generateTimeTable(false); // No proxy assigned for empty classes.
+generateTimeTable(true); // Assign teachers which are free.
