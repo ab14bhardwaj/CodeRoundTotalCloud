@@ -19,18 +19,20 @@ Important points:
 const csv = require("csvtojson");
 const path = require("path");
 const fs = require('fs');
-
-let CSV_DATA = {};
-// Read all JSON files
 const TIME_TABLE_MAP = ['8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM'];
 const DAY_MAP = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const CLASS_LIST = ['6th', '7th', '8th', '9th', '10th'];
-const SUBJECTS_LIST =  ["English", "Hindi", "Kannada", "Maths", "Science"];
+const SUBJECTS_LIST = ["English", "Hindi", "Kannada", "Maths", "Science"];
+
+let CSV_DATA = {};
+let SORTED_SUBJECT_DATA = {};
+let PROXY_TEACHER_AVAILABLE = {};
+
 const getJsonFromCsv = async () => {
     try {
         let buildFolder = fs.readdirSync(path.resolve(__dirname, './assets'));
         for (let file of buildFolder) {
-            var filePath = path.resolve(__dirname, ('./assets' + '/' + file).toString())
+            let filePath = path.resolve(__dirname, ('./assets' + '/' + file).toString())
             await csv()
                 .fromFile(filePath)
                 .then(function (jsonArrayObj) {
@@ -44,55 +46,80 @@ const getJsonFromCsv = async () => {
 /*
  TOTO: generate class wise timetable.
 */
-const generateTimeTable = async () => {
+const generateTimeTable = async (proxy) => {
     await getJsonFromCsv();
-    getFreeSlotsDayWise();
+    getFreeSlotsDayWise(proxy);
 }
 
-const getFreeSlotsDayWise = () => {
-    var sortSubject = {};
-    for (let data of SUBJECTS_LIST){
+const getFreeSlotsDayWise = async (proxy) => {
+    let sortSubject = {};
+    for (let data of SUBJECTS_LIST) {
         sortSubject[data] = getSubjectTimeTable(CSV_DATA[data], data);
     }
-    for (let classKey of CLASS_LIST){
-        console.log("Time table generation for class: "+classKey);  
-        generateTimeTableClassWise(classKey, sortSubject);    
+    SORTED_SUBJECT_DATA = sortSubject;
+    await findFreeTeacherByDayAndTime();
+    for (let classKey of CLASS_LIST) {
+        console.log("Time table generation for class: " + classKey);
+        generateTimeTableClassWise(classKey, sortSubject, proxy);
     }
 }
 
 const getSubjectTimeTable = (subject) => {
-    var mapOnBasisOfSubject = {};
-    for (var i = 0; i < subject.length; i++) {
-        var clonedObject = Object.assign({}, subject[i]);;
-        var key = clonedObject["--"];
+    let mapOnBasisOfSubject = {};
+    for (let i = 0; i < subject.length; i++) {
+        let clonedObject = Object.assign({}, subject[i]);;
+        let key = clonedObject["--"];
         delete clonedObject["--"];
         mapOnBasisOfSubject[key] = clonedObject;
     }
     return mapOnBasisOfSubject;
 };
 
-const generateTimeTableClassWise = (className, sortSubject) => {
-    var classObject = {};
-    for (let data of DAY_MAP){
+const generateTimeTableClassWise = (className, sortSubject, isProxyOptionAvailable) => {
+    let classObject = {};
+    for (let data of DAY_MAP) {
         classObject[data] = {};
-        for (let foo of TIME_TABLE_MAP){
+        for (let foo of TIME_TABLE_MAP) {
             classObject[data][foo] = {};
-            for (let key of SUBJECTS_LIST){
+            for (let key of SUBJECTS_LIST) {
                 if (sortSubject[key][foo][data] && sortSubject[key][foo][data] == className) {
                     classObject[data][foo] = key;
+                }
+                if (Object.entries(classObject[data][foo]).length === 0 && classObject[data][foo].constructor === Object){
+                    if (isProxyOptionAvailable) {
+                        var freeListArray = PROXY_TEACHER_AVAILABLE[data][foo];
+                        freeListArray && freeListArray[0] && (classObject[data][foo] = freeListArray[0]);
+                        freeListArray && freeListArray[0] && (freeListArray.shift());
+                    } else {
+                        classObject[data][foo] = '';
+                    }
                 }
             }
         }
     }
     console.log(classObject);
 }
-const generateTimeTableWithProxies = () => {
 
-};
 const findFreeTeacherByDayAndTime = () => {
-/*
-    - iterate subject and create 
-*/
+    /*
+        - iterate subject and create  SORTED_SUBJECT_DATA
+    */
+    let proxyDataDataAndTime = {};
+    for (let data of SUBJECTS_LIST) {
+        for (let foo of TIME_TABLE_MAP) {
+            for (let key of DAY_MAP) {
+                proxyDataDataAndTime[key] = Object.assign({}, proxyDataDataAndTime[key]);
+                if (SORTED_SUBJECT_DATA[data][foo][key] === "") {
+                    if (proxyDataDataAndTime && proxyDataDataAndTime[key] && proxyDataDataAndTime[key][foo] && proxyDataDataAndTime[key][foo].length != 0) {
+                        proxyDataDataAndTime[key][foo].push(data);
+                    } else {
+                        proxyDataDataAndTime[key][foo] = [data]
+                    }
+                }
+            }
+        }
+    }
+    PROXY_TEACHER_AVAILABLE = proxyDataDataAndTime;
 };
-generateTimeTable(); // No proxy assigned for empty classes.
-generateTimeTableWithProxies(); // Assign teachers which are free.
+generateTimeTable(false); // No proxy assigned for empty classes.
+// generateTimeTable(true); // Assign teachers which are free.
