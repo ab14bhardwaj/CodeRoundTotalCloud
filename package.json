@@ -1,0 +1,14 @@
+{
+  "name": "total-cloud",
+  "version": "1.0.0",
+  "description": "Assignment",
+  "main": "app.js",
+  "scripts": {
+    "test": "node app.js"
+  },
+  "author": "ab14bhardwaj@gmail.com",
+  "license": "ISC",
+  "dependencies": {
+    "csvtojson": "2.0.10"
+  }
+}
